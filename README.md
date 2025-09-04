@@ -2,6 +2,8 @@
 
 A complete Angular/Ionic todo application using Appwrite as the backend service.
 
+Demo is available at: [https://appwrite-todo.appwrite.network/](https://appwrite-todo.appwrite.network/)
+
 ## Step 1: Create Appwrite Account and Project
 
 ### 1.1 Sign up for Appwrite Cloud
