@@ -198,7 +198,7 @@ export class AppwriteService {
         dueDate: todoData.dueDate ?? null
       };
 
-      const currentUserId = this.currentUser()?.id || '';
+      const currentUserId = this.currentUser()?.id;
       if (!currentUserId) {
         return Promise.reject(new Error('User not authenticated'));
       }
