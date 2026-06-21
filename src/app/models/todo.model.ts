@@ -3,7 +3,7 @@ export interface Todo {
   title: string;
   description?: string;
   completed: boolean;
-  dueDate?: string;
+  dueDate?: string | null;
   created: string;
   updated: string;
 }
@@ -12,13 +12,12 @@ export interface CreateTodoRequest {
   title: string;
   description?: string;
   completed?: boolean;
-  user: string;
-  dueDate?: string;
+  dueDate?: string | null;
 }
 
 export interface UpdateTodoRequest {
   title?: string;
   description?: string;
   completed?: boolean;
-  dueDate?: string;
+  dueDate?: string | null;
 }

@@ -18,6 +18,7 @@ import {
   IonList,
   IonRefresher,
   IonRefresherContent,
+  RefresherCustomEvent,
   IonText,
   IonTitle,
   IonToolbar,
@@ -168,7 +169,7 @@ export class TodosPage implements ViewWillEnter {
     this.router.navigate(['/profile']);
   }
 
-  async doRefresh(event: any) {
+  async doRefresh(event: RefresherCustomEvent) {
     await this.loadTodos();
     event.target.complete();
   }

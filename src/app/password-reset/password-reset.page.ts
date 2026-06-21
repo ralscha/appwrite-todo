@@ -1,12 +1,13 @@
 import { Component, inject, input, signal } from '@angular/core';
 import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators
-} from '@angular/forms';
+  FormField,
+  FormRoot,
+  form,
+  minLength,
+  required,
+  submit,
+  validate
+} from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import {
   IonButton,
@@ -26,6 +27,11 @@ import { AppwriteService } from '../services/appwrite.service';
 import { ToastService } from '../services/toast.service';
 import { FormErrorService } from '../services/form-error.service';
 
+interface PasswordResetFormModel {
+  password: string;
+  confirmPassword: string;
+}
+
 @Component({
   selector: 'app-password-reset',
   templateUrl: './password-reset.page.html',
@@ -43,68 +49,50 @@ import { FormErrorService } from '../services/form-error.service';
     IonGrid,
     IonRow,
     IonCol,
-    ReactiveFormsModule
+    FormRoot,
+    FormField
   ]
 })
 export class PasswordResetPage {
   formErrorService = inject(FormErrorService);
-  resetForm: FormGroup;
+  resetModel = signal<PasswordResetFormModel>({
+    password: '',
+    confirmPassword: ''
+  });
+  resetForm = form(this.resetModel, path => {
+    required(path.password);
+    minLength(path.password, 8);
+    required(path.confirmPassword);
+    validate(path.confirmPassword, ({ value, valueOf }) =>
+      value() === valueOf(path.password)
+        ? null
+        : { kind: 'passwordMismatch', message: 'Passwords do not match' }
+    );
+  });
   isLoading = signal(false);
   passwordReset = signal(false);
-  userId = input<string>('userId');
-  secret = input<string>('secret');
-  private readonly fb = inject(FormBuilder);
+  userId = input<string>('');
+  secret = input<string>('');
   private readonly appwriteService = inject(AppwriteService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
 
-  constructor() {
-    this.resetForm = this.fb.nonNullable.group(
-      {
-        password: ['', [Validators.required, Validators.minLength(8)]],
-        confirmPassword: ['', [Validators.required]]
-      },
-      { validators: this.passwordMatchValidator }
-    );
-  }
-
-  get password() {
-    return this.resetForm.get('password');
-  }
-
-  get confirmPassword() {
-    return this.resetForm.get('confirmPassword');
-  }
-
-  passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
-    const password = control.get('password');
-    const confirmPassword = control.get('confirmPassword');
-
-    if (
-      password &&
-      confirmPassword &&
-      password.value !== confirmPassword.value
-    ) {
-      confirmPassword.setErrors({ mismatch: true });
-      return { mismatch: true };
-    }
-    return null;
-  }
-
   async onSubmit() {
-    if (
-      this.resetForm.valid &&
-      !this.isLoading() &&
-      this.userId() &&
-      this.secret()
-    ) {
-      this.isLoading.set(true);
+    if (!this.userId() || !this.secret()) {
+      return;
+    }
 
+    await submit(this.resetForm, async () => {
+      if (this.isLoading()) {
+        return;
+      }
+
+      this.isLoading.set(true);
       try {
         await this.appwriteService.updateRecovery(
           this.userId(),
           this.secret(),
-          this.resetForm.value.password
+          this.resetModel().password
         );
         this.passwordReset.set(true);
         await this.toastService.showToast(
@@ -114,14 +102,16 @@ export class PasswordResetPage {
         setTimeout(() => {
           this.router.navigate(['/login']);
         }, 2000);
-      } catch (error: any) {
+      } catch (error: unknown) {
         await this.toastService.showToast(
-          error?.message ?? 'Failed to reset password. Please try again later.',
+          error instanceof Error
+            ? error.message
+            : 'Failed to reset password. Please try again later.',
           'danger'
         );
+      } finally {
+        this.isLoading.set(false);
       }
-
-      this.isLoading.set(false);
-    }
+    });
   }
 }

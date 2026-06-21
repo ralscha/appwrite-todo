@@ -1,10 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+  FormField,
+  FormRoot,
+  email,
+  form,
+  minLength,
+  required,
+  submit
+} from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 import {
   IonButton,
@@ -26,6 +29,11 @@ import { AppwriteService } from '../services/appwrite.service';
 import { ToastService } from '../services/toast.service';
 import { FormErrorService } from '../services/form-error.service';
 
+interface LoginFormModel {
+  email: string;
+  password: string;
+}
+
 @Component({
   selector: 'app-login',
   templateUrl: './login.page.html',
@@ -43,45 +51,44 @@ import { FormErrorService } from '../services/form-error.service';
     IonGrid,
     IonRow,
     IonCol,
-    ReactiveFormsModule,
     RouterLink,
     IonRouterLinkWithHref,
-    IonInputPasswordToggle
+    IonInputPasswordToggle,
+    FormRoot,
+    FormField
   ]
 })
 export class LoginPage {
   formErrorService = inject(FormErrorService);
-  loginForm: FormGroup;
+  loginModel = signal<LoginFormModel>({
+    email: '',
+    password: ''
+  });
+  loginForm = form(this.loginModel, path => {
+    required(path.email);
+    email(path.email);
+    required(path.password);
+    minLength(path.password, 6);
+  });
   isLoading = signal(false);
-  private fb = inject(FormBuilder);
-  private appwriteService = inject(AppwriteService);
-  private router = inject(Router);
-  private toastService = inject(ToastService);
-
-  constructor() {
-    this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
-    });
-  }
-
-  get email() {
-    return this.loginForm.get('email');
-  }
-
-  get password() {
-    return this.loginForm.get('password');
-  }
+  private readonly appwriteService = inject(AppwriteService);
+  private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
 
   async onSubmit() {
-    if (this.loginForm.valid && !this.isLoading()) {
+    await submit(this.loginForm, async () => {
+      if (this.isLoading()) {
+        return;
+      }
+
       this.isLoading.set(true);
-
-      await this.appwriteService.login(this.loginForm.value);
-      await this.toastService.showToast('Login successful!', 'success');
-      await this.router.navigate(['/todos']);
-
-      this.isLoading.set(false);
-    }
+      try {
+        await this.appwriteService.login(this.loginModel());
+        await this.toastService.showToast('Login successful!', 'success');
+        await this.router.navigate(['/todos']);
+      } finally {
+        this.isLoading.set(false);
+      }
+    });
   }
 }

@@ -1,10 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+  FormField,
+  FormRoot,
+  email,
+  form,
+  required,
+  submit
+} from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import {
   IonButton,
@@ -25,6 +27,10 @@ import { AppwriteService } from '../services/appwrite.service';
 import { ToastService } from '../services/toast.service';
 import { FormErrorService } from '../services/form-error.service';
 
+interface PasswordResetRequestFormModel {
+  email: string;
+}
+
 @Component({
   selector: 'app-password-reset-request',
   templateUrl: './password-reset-request.page.html',
@@ -42,44 +48,43 @@ import { FormErrorService } from '../services/form-error.service';
     IonGrid,
     IonRow,
     IonCol,
-    ReactiveFormsModule,
     RouterLink,
-    IonRouterLinkWithHref
+    IonRouterLinkWithHref,
+    FormRoot,
+    FormField
   ]
 })
 export class PasswordResetRequestPage {
   formErrorService = inject(FormErrorService);
-  resetForm: FormGroup;
+  resetModel = signal<PasswordResetRequestFormModel>({ email: '' });
+  resetForm = form(this.resetModel, path => {
+    required(path.email);
+    email(path.email);
+  });
   isLoading = signal(false);
   emailSent = signal(false);
-  private readonly fb = inject(FormBuilder);
   private readonly appwriteService = inject(AppwriteService);
   private readonly toastService = inject(ToastService);
 
-  constructor() {
-    this.resetForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]]
-    });
-  }
-
-  get email() {
-    return this.resetForm.get('email');
-  }
-
   async onSubmit() {
-    if (this.resetForm.valid && !this.isLoading()) {
+    await submit(this.resetForm, async () => {
+      if (this.isLoading()) {
+        return;
+      }
+
       this.isLoading.set(true);
-
-      await this.appwriteService.requestPasswordReset(
-        this.resetForm.value.email
-      );
-      this.emailSent.set(true);
-      await this.toastService.showToast(
-        'Password reset email sent! Check your inbox.',
-        'success'
-      );
-
-      this.isLoading.set(false);
-    }
+      try {
+        await this.appwriteService.requestPasswordReset(
+          this.resetModel().email
+        );
+        this.emailSent.set(true);
+        await this.toastService.showToast(
+          'Password reset email sent! Check your inbox.',
+          'success'
+        );
+      } finally {
+        this.isLoading.set(false);
+      }
+    });
   }
 }

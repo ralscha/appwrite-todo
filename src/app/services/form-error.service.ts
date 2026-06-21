@@ -1,42 +1,48 @@
-import { Injectable } from '@angular/core';
-import { AbstractControl } from '@angular/forms';
+import { Service } from '@angular/core';
+import { FieldTree } from '@angular/forms/signals';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Service()
 export class FormErrorService {
   getErrorMessage(
-    control: AbstractControl | null,
+    field: FieldTree<unknown> | null,
     controlName: string
   ): string {
-    if (!control || !control.invalid || !control.touched) {
+    const state = field?.();
+    if (!state || !state.invalid() || !state.touched()) {
       return '';
     }
 
-    if (control.errors?.['required']) {
-      return `${this.capitalizeFirstLetter(controlName)} is required`;
+    const error = state.errors()[0];
+    if (!error) {
+      return '';
     }
 
-    if (control.errors?.['email']) {
-      return 'Please enter a valid email';
+    if (error.message) {
+      return error.message;
     }
 
-    if (control.errors?.['minlength']) {
-      return `${this.capitalizeFirstLetter(controlName)} must be at least ${control.errors?.['minlength'].requiredLength} characters`;
+    switch (error.kind) {
+      case 'required':
+        return `${this.capitalizeFirstLetter(controlName)} is required`;
+      case 'email':
+        return 'Please enter a valid email';
+      case 'minLength':
+        return `${this.capitalizeFirstLetter(controlName)} must be at least ${this.getErrorNumber(error, 'minLength')} characters`;
+      case 'maxLength':
+        return `${this.capitalizeFirstLetter(controlName)} cannot exceed ${this.getErrorNumber(error, 'maxLength')} characters`;
+      case 'passwordMismatch':
+        return 'Passwords do not match';
+      default:
+        return '';
     }
-
-    if (control.errors?.['maxlength']) {
-      return `${this.capitalizeFirstLetter(controlName)} cannot exceed ${control.errors?.['maxlength'].requiredLength} characters`;
-    }
-
-    if (control.errors?.['passwordMismatch']) {
-      return 'Passwords do not match';
-    }
-
-    return '';
   }
 
-  private capitalizeFirstLetter(string: string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+  private getErrorNumber(error: object, key: string): number {
+    const value = (error as Record<string, unknown>)[key];
+    return typeof value === 'number' ? value : 0;
+  }
+
+  private capitalizeFirstLetter(value: string) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
   }
 }

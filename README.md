@@ -1,151 +1,111 @@
-# Todo Application with Appwrite Backend
+# Appwrite Todo
 
-A complete Angular/Ionic todo application using Appwrite as the backend service.
+An Angular/Ionic todo app that uses Appwrite Cloud for email/password authentication, password recovery, and per-user todo storage with Appwrite TablesDB.
 
-Demo is available at: [https://appwrite-todo.appwrite.network/](https://appwrite-todo.appwrite.network/)
+Demo: [https://appwrite-todo.appwrite.network/](https://appwrite-todo.appwrite.network/)
 
-## Step 1: Create Appwrite Account and Project
+## Tech Stack
 
-### 1.1 Sign up for Appwrite Cloud
-1. Go to [https://cloud.appwrite.io](https://cloud.appwrite.io)
-2. Click **Sign up** and create your account
+- Angular 22 standalone application
+- Ionic Angular 8
+- Appwrite Web SDK 26 with `TablesDB`
+- TypeScript strict mode and Angular ESLint
 
-Appwrite offers a free tier that is sufficient for this example application.
+## Appwrite Setup
 
-### 1.2 Create a New Project
-1. In your Appwrite Console, click **Create Project**
-2. Enter project details:
-   - **Name**: `todo` (or your preferred name)
-   - **Project ID**: This will be auto-generated (e.g., `668b2b9730029ec3ac337`)
-   - **Region**: Choose the region where the backend will be hosted (e.g., `Frankfurt`)
-3. Click **Create**
+### 1. Create a Project
 
-### 1.3 Note Your Project Configuration
-After creating the project, note down:
-- **Project ID**: Found in Project Settings
-- **API Endpoint**: Your region endpoint (e.g., `https://fra.cloud.appwrite.io/v1`)
-- **Project Name**: The name you gave your project
+1. Sign in at [https://cloud.appwrite.io](https://cloud.appwrite.io).
+2. Create a new project.
+3. Note the project endpoint and project ID.
 
-## Step 2: Configure Web Platform
+The checked-in environment files currently point to:
 
-### 2.1 Add Web Platform
-1. In your Appwrite Console, go to **Overview**
-2. Click **Add Platform**
-3. Select **Web**
-4. Select **Type** Angular
-5. Enter **Hostname** `localhost` (for development)
-6. Click **Create platform**
-
-## Step 3: Set Up Authentication
-
-### 3.1 Configure Authentication Method
-1. Navigate to **Auth** in the left sidebar
-2. Go to **Settings**
-3. In **Auth methods** section, ensure **Email/Password** is enabled and all other options are disabled
-
-### 3.2 Configure Security
-1. Go to **Auth** → **Security**
-2. Check all options and set them according to your security needs
-3. Click **Update** whenever you make changes
-
-## Step 4: Create Database and Tables
-
-### 4.1 Create Database
-1. Navigate to **Databases** in the left sidebar
-2. Click **Create Database**
-3. Enter details:
-   - **Name**: `Todos Database`
-   - **Database ID**: Enter one or omit to be auto-generated (e.g., `todos-database`)
-4. Click **Create**
-
-### 4.2 Create Todos Table
-1. Inside your new database, click **Create table**
-2. Enter table details:
-   - **Name**: `Todos`
-   - **Table ID**: Enter one or omit to be auto-generated (e.g., `todos`)
-3. Click **Create**
-
-### 4.3 Create Table Columns
-In the `todos` table, go to **Columns** and create these columns:
-
-#### 4.4.1 Title Column
-- Click **Create Column**
-- **Key**: `title`
-- **Type**: String
-- **Size**: 255
-- **Required**: ✅
-- Click **Create**
-
-#### 4.4.2 Description Column
-- Click **Create Column**
-- **Key**: `description`
-- **Type**: String
-- **Size**: 1000
-- **Required**: ❌
-- Click **Create**
-
-#### 4.4.3 Completed Column
-- Click **Create Column**
-- **Key**: `completed`
-- **Type**: Boolean
-- **Required**: ✅
-- **Default**: `false`
-- Click **Create**
-
-#### 4.4.4 Due Date Column
-- Click **Create Column**
-- **Key**: `dueDate`
-- **Type**: DateTime
-- **Required**: ❌
-- Click **Create**
-
-Appwrite automatically adds the $id (primary key), $createdAt, and $updatedAt columns.
-
-### 4.5 Set Table Permissions
-1. Go to the **Settings** tab of the `todos` table
-2. Under **Permissions**, add one role:
-   - Role **All users**
-   - Enable **Create** only. Other permissions must be disabled.
-4. Click **Update**
-3. Under **Row Security**, enable **Row security** to allow row-level permissions.
-4. Click **Update**
-
-## Step 5: Configure Application Environment
-
-### 5.1 Update Development Environment
-1. Open `src/environments/environment.ts`
-2. Replace the configuration with your project details:
-
-```typescript
-export const environment: {
-  appwriteEndpoint: string;
-  appwriteProjectId: string;
-  appwriteProjectName: string;
-  production: boolean;
-} = {
-  appwriteEndpoint: 'YOUR_API_ENDPOINT', // e.g., 'https://fra.cloud.appwrite.io/v1'
-  appwriteProjectId: 'YOUR_PROJECT_ID', // e.g., '668b2b9730029ec3ac337'
-  appwriteProjectName: 'YOUR_PROJECT_NAME', // e.g., 'todo'
-  production: false
-};
+```ts
+appwriteEndpoint: 'https://fra.cloud.appwrite.io/v1';
+appwriteProjectId: '68b2b9730029ec3ac337';
+appwriteProjectName: 'todo';
 ```
 
-Update `src/environments/environment.prod.ts` similarly for production settings.
+Update `src/environments/environment.ts` and `src/environments/environment.prod.ts` if you use a different Appwrite project.
 
+### 2. Add Web Platforms
 
-## Step 6: Install and Run the Application
+In the Appwrite Console, add a Web platform for every host that will run the app:
 
-### 6.1 Install Dependencies
+- `localhost` for local development
+- your production hostname for deployed builds
+
+Password recovery redirects back to `/password-reset`, so the host used for the reset email must be registered as an allowed platform host.
+
+### 3. Enable Authentication
+
+In **Auth > Settings**, enable **Email/Password** authentication. The app uses these account APIs:
+
+- register
+- login/logout
+- update name/email
+- password recovery
+
+### 4. Create the Database and Table
+
+The app uses fixed IDs in `src/app/services/appwrite.service.ts`:
+
+- Database ID: `todos-database`
+- Table ID: `todos`
+
+Create a database and table with those IDs, or update the service constants if you choose different IDs.
+
+Create these table columns:
+
+| Key           | Type     | Required | Notes             |
+| ------------- | -------- | -------- | ----------------- |
+| `title`       | String   | Yes      | Size 255          |
+| `description` | String   | No       | Size 1000         |
+| `completed`   | Boolean  | Yes      | Default `false`   |
+| `dueDate`     | DateTime | No       | Can be empty/null |
+
+Appwrite provides `$id`, `$createdAt`, and `$updatedAt` automatically.
+
+### 5. Configure Permissions
+
+On the `todos` table:
+
+1. Enable row security.
+2. Grant **All users** the **Create** permission only.
+
+The client adds read, update, and delete permissions to each created row for the signed-in user.
+
+## Local Development
+
+Install dependencies:
+
 ```bash
 npm install
 ```
 
-### 6.2 Start Development Server
+Run the dev server:
+
 ```bash
-ionic serve -o
+npm start
 ```
-The application will be open in the browser at `http://localhost:8100`
 
+Angular serves the app at `http://localhost:4200` by default.
 
-## Licenses
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Project Scripts
+
+```bash
+npm start      # Run the Angular dev server
+npm run build  # Create a production build in dist/app
+npm run lint   # Run Angular ESLint
+npm run format # Format the workspace with Prettier
+```
+
+## Notes
+
+- The Appwrite SDK currently pulls in `json-bigint`, which Angular reports as a CommonJS optimization warning during production builds.
+- `npm audit --omit=dev` reports no production vulnerabilities. Any remaining audit findings are in development tooling.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Service, signal } from '@angular/core';
 import {
   Account,
   Client,
@@ -23,9 +23,14 @@ import {
   UpdateTodoRequest
 } from '../models/todo.model';
 
-@Injectable({
-  providedIn: 'root'
-})
+type TodoRow = Models.Row & {
+  title: string;
+  description?: string;
+  completed: boolean;
+  dueDate?: string | null;
+};
+
+@Service()
 export class AppwriteService {
   isLoggedIn = signal<boolean>(false);
   currentUser = signal<User | null>(null);
@@ -90,7 +95,9 @@ export class AppwriteService {
   async logout(): Promise<void> {
     try {
       await this.account.deleteSession({ sessionId: 'current' });
-    } catch {}
+    } catch {
+      // The current session may already be gone; local auth state still needs clearing.
+    }
     this.isLoggedIn.set(false);
     this.currentUser.set(null);
   }
@@ -129,7 +136,7 @@ export class AppwriteService {
   async updateProfile(data: UpdateProfileRequest): Promise<User> {
     try {
       if (data.email !== undefined && !data.password) {
-        return Promise.reject('Password is required when updating email');
+        throw new Error('Password is required when updating email');
       }
 
       let user;
@@ -177,7 +184,7 @@ export class AppwriteService {
         queries.push(Query.equal('completed', false));
       }
 
-      const response = await this.tablesDB.listRows({
+      const response = await this.tablesDB.listRows<TodoRow>({
         databaseId: this.DATABASE_ID,
         tableId: this.TODOS_TABLE_ID,
         queries: queries
@@ -189,9 +196,9 @@ export class AppwriteService {
     }
   }
 
-  async createTodo(todoData: Omit<CreateTodoRequest, 'user'>): Promise<Todo> {
+  async createTodo(todoData: CreateTodoRequest): Promise<Todo> {
     try {
-      const data = {
+      const data: Omit<TodoRow, keyof Models.Row> = {
         title: todoData.title,
         description: todoData.description ?? '',
         completed: todoData.completed ?? false,
@@ -200,10 +207,10 @@ export class AppwriteService {
 
       const currentUserId = this.currentUser()?.id;
       if (!currentUserId) {
-        return Promise.reject(new Error('User not authenticated'));
+        throw new Error('User not authenticated');
       }
 
-      const document = await this.tablesDB.createRow({
+      const document = await this.tablesDB.createRow<TodoRow>({
         databaseId: this.DATABASE_ID,
         tableId: this.TODOS_TABLE_ID,
         rowId: ID.unique(),
@@ -223,7 +230,7 @@ export class AppwriteService {
 
   async updateTodo(todoId: string, data: UpdateTodoRequest): Promise<Todo> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<Omit<TodoRow, keyof Models.Row>> = {};
 
       if (data.title !== undefined) updateData.title = data.title;
       if (data.description !== undefined)
@@ -231,7 +238,7 @@ export class AppwriteService {
       if (data.completed !== undefined) updateData.completed = data.completed;
       if (data.dueDate !== undefined) updateData.dueDate = data.dueDate;
 
-      const document = await this.tablesDB.updateRow({
+      const document = await this.tablesDB.updateRow<TodoRow>({
         databaseId: this.DATABASE_ID,
         tableId: this.TODOS_TABLE_ID,
         rowId: todoId,
@@ -258,7 +265,7 @@ export class AppwriteService {
 
   async getTodo(todoId: string): Promise<Todo> {
     try {
-      const document = await this.tablesDB.getRow({
+      const document = await this.tablesDB.getRow<TodoRow>({
         databaseId: this.DATABASE_ID,
         tableId: this.TODOS_TABLE_ID,
         rowId: todoId
@@ -297,26 +304,45 @@ export class AppwriteService {
     };
   }
 
-  private mapRowToTodo(document: Models.Row): Todo {
-    const doc = document as any;
+  private mapRowToTodo(row: TodoRow): Todo {
     return {
-      id: document.$id,
-      title: doc.title,
-      description: doc.description,
-      completed: doc.completed,
-      dueDate: doc.dueDate,
-      created: document.$createdAt,
-      updated: document.$updatedAt
+      id: row.$id,
+      title: row.title,
+      description: row.description,
+      completed: row.completed,
+      dueDate: row.dueDate,
+      created: row.$createdAt,
+      updated: row.$updatedAt
     };
   }
 
-  private handleError(error: any): Error {
-    if (error?.message) {
+  private handleError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    if (this.hasMessage(error)) {
       return new Error(error.message);
     }
-    if (error?.response?.message) {
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      this.hasMessage(error.response)
+    ) {
       return new Error(error.response.message);
     }
+
     return new Error('An unexpected error occurred');
+  }
+
+  private hasMessage(value: unknown): value is { message: string } {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      'message' in value &&
+      typeof value.message === 'string'
+    );
   }
 }

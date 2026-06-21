@@ -25,41 +25,48 @@
       </ion-card-header>
 
       <ion-card-content>
-        <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+        <form [formRoot]="profileForm" (submit)="onSubmit()">
           <ion-input
-            type="email"
+            [errorText]="
+              formErrorService.getErrorMessage(profileForm.email, 'email')
+            "
+            [formField]="profileForm.email"
             fill="outline"
-            formControlName="email"
             label="Email"
             labelPlacement="stacked"
             placeholder="Enter your email"
-            (ionInput)="onEmailChange()"
-            [errorText]="formErrorService.getErrorMessage(email, 'email')" />
+            type="email" />
 
           @if (showPasswordField()) {
             <ion-input
-              type="password"
+              class="password-input"
+              [errorText]="
+                formErrorService.getErrorMessage(
+                  profileForm.password,
+                  'password'
+                )
+              "
+              [formField]="profileForm.password"
               fill="outline"
-              formControlName="password"
               label="Current Password"
               labelPlacement="stacked"
               placeholder="Enter your current password to update email"
-              [errorText]="formErrorService.getErrorMessage(password, 'password')" />
+              type="password" />
           }
 
           <ion-input
-            type="text"
+            [formField]="profileForm.name"
             fill="outline"
-            formControlName="name"
             label="Name"
             labelPlacement="stacked"
-            placeholder="Enter your name (optional)" />
+            placeholder="Enter your name (optional)"
+            type="text" />
 
           <div class="button-container">
             <ion-button
+              [disabled]="profileForm().invalid() || isLoading()"
               expand="block"
-              type="submit"
-              [disabled]="profileForm.invalid || isLoading()">
+              type="submit">
               @if (isLoading()) {
                 Updating...
               } @else {

@@ -34,12 +34,12 @@ p {
   color: var(--ion-color-medium);
 }
 
-ion-input[formControlName="password"] {
+ion-input.password-input {
   border: 1px solid var(--ion-color-warning);
   border-radius: 8px;
   --highlight-color: var(--ion-color-warning);
 }
 
-ion-input[formControlName="password"] ion-label {
+ion-input.password-input ion-label {
   color: var(--ion-color-warning) !important;
 }

@@ -1,22 +1,34 @@
-import { ErrorHandler, inject, Injectable, NgZone } from '@angular/core';
+import { ErrorHandler, inject, Service, NgZone } from '@angular/core';
 import { ToastService } from './toast.service';
 
-@Injectable()
+@Service()
 export class GlobalErrorHandler implements ErrorHandler {
   private readonly toastService = inject(ToastService);
   private readonly zone = inject(NgZone);
 
-  handleError(error: any): void {
-    if (error.originalError) {
-      error = error.originalError;
-    }
+  handleError(error: unknown): void {
+    const unwrappedError = this.unwrapError(error);
+    const message =
+      unwrappedError instanceof Error
+        ? unwrappedError.message
+        : 'An unexpected error occurred';
 
-    const message = error.message || 'An unexpected error occurred';
-
-    console.error(error);
+    console.error(unwrappedError);
 
     this.zone.run(() => {
       this.toastService.showToast(message, 'danger');
     });
+  }
+
+  private unwrapError(error: unknown): unknown {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'originalError' in error
+    ) {
+      return error.originalError;
+    }
+
+    return error;
   }
 }

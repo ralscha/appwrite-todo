@@ -33,46 +33,51 @@
   } @else {
     <ion-card>
       <ion-card-content>
-        <form [formGroup]="todoForm" (ngSubmit)="onSubmit()">
+        <form [formRoot]="todoForm" (submit)="onSubmit()">
           <ion-input
-            type="text"
-            formControlName="title"
+            [errorText]="
+              formErrorService.getErrorMessage(todoForm.title, 'title')
+            "
+            [formField]="todoForm.title"
             fill="outline"
             label="Title *"
             labelPlacement="stacked"
             placeholder="Enter todo title"
-            [errorText]="formErrorService.getErrorMessage(title, 'title')" />
+            type="text" />
 
           <ion-textarea
-            formControlName="description"
-            label="Description"
+            [errorText]="
+              formErrorService.getErrorMessage(
+                todoForm.description,
+                'description'
+              )
+            "
+            [formField]="todoForm.description"
             fill="outline"
+            label="Description"
             labelPlacement="stacked"
             placeholder="Enter todo description (optional)"
-            rows="4"
-            [errorText]="
-              formErrorService.getErrorMessage(description, 'description')
-            " />
+            rows="4" />
 
           <ion-datetime
-            formControlName="dueDate"
-            presentation="date"
+            [formField]="todoForm.dueDate"
             [min]="getCurrentDate()"
+            presentation="date"
             slot="end">
             <ion-label slot="start">Due Date</ion-label>
           </ion-datetime>
 
           @if (isEditing()) {
-            <ion-checkbox formControlName="completed" labelPlacement="end">
+            <ion-checkbox [formField]="todoForm.completed" labelPlacement="end">
               Completed
             </ion-checkbox>
           }
 
           <div class="button-container">
             <ion-button
+              [disabled]="todoForm().invalid() || isLoading()"
               expand="block"
-              type="submit"
-              [disabled]="todoForm.invalid || isLoading()">
+              type="submit">
               @if (isLoading()) {
                 @if (isEditing()) {
                   Updating...

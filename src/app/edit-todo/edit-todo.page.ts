@@ -1,10 +1,12 @@
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+  FormField,
+  FormRoot,
+  form,
+  maxLength,
+  required,
+  submit
+} from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import {
   IonBackButton,
@@ -28,6 +30,13 @@ import { Todo } from '../models/todo.model';
 import { ToastService } from '../services/toast.service';
 import { FormErrorService } from '../services/form-error.service';
 
+interface TodoFormModel {
+  title: string;
+  description: string;
+  completed: boolean;
+  dueDate: string;
+}
+
 @Component({
   selector: 'app-edit-todo',
   templateUrl: './edit-todo.page.html',
@@ -48,45 +57,30 @@ import { FormErrorService } from '../services/form-error.service';
     IonCheckbox,
     IonButtons,
     IonBackButton,
-    ReactiveFormsModule
+    FormRoot,
+    FormField
   ]
 })
 export class EditTodoPage implements OnInit {
   formErrorService = inject(FormErrorService);
-  todoForm: FormGroup;
+  todoModel = signal<TodoFormModel>({
+    title: '',
+    description: '',
+    completed: false,
+    dueDate: ''
+  });
+  todoForm = form(this.todoModel, path => {
+    required(path.title);
+    maxLength(path.title, 255);
+    maxLength(path.description, 1000);
+  });
   isLoading = signal(false);
   isEditing = signal(false);
   currentTodo = signal<Todo | null>(null);
   id = input<string | null>(null);
-  private readonly fb = inject(FormBuilder);
   private readonly appwriteService = inject(AppwriteService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
-
-  constructor() {
-    this.todoForm = this.fb.group({
-      title: ['', [Validators.required, Validators.maxLength(255)]],
-      description: ['', [Validators.maxLength(1000)]],
-      completed: [false],
-      dueDate: ['']
-    });
-  }
-
-  get title() {
-    return this.todoForm.get('title');
-  }
-
-  get description() {
-    return this.todoForm.get('description');
-  }
-
-  get completed() {
-    return this.todoForm.get('completed');
-  }
-
-  get dueDate() {
-    return this.todoForm.get('dueDate');
-  }
 
   ngOnInit() {
     if (this.id()) {
@@ -96,51 +90,61 @@ export class EditTodoPage implements OnInit {
   }
 
   async loadTodo() {
-    if (!this.id()) {
+    const id = this.id();
+    if (!id) {
       return;
     }
 
     this.isLoading.set(true);
-    const todo = await this.appwriteService.getTodo(this.id()!);
-    this.currentTodo.set(todo);
-    this.todoForm.patchValue({
-      title: todo.title,
-      description: todo.description ?? '',
-      completed: todo.completed,
-      dueDate: todo.dueDate ?? ''
-    });
-    this.isLoading.set(false);
+    try {
+      const todo = await this.appwriteService.getTodo(id);
+      this.currentTodo.set(todo);
+      this.todoModel.set({
+        title: todo.title,
+        description: todo.description ?? '',
+        completed: todo.completed,
+        dueDate: todo.dueDate ?? ''
+      });
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   async onSubmit() {
-    if (this.todoForm.valid && !this.isLoading()) {
+    await submit(this.todoForm, async () => {
+      if (this.isLoading()) {
+        return;
+      }
+
       this.isLoading.set(true);
+      try {
+        const formData = this.todoModel();
+        const todoData = {
+          ...formData,
+          dueDate: formData.dueDate
+            ? new Date(formData.dueDate).toISOString()
+            : null
+        };
 
-      const formData = this.todoForm.value;
+        if (this.isEditing() && this.id()) {
+          await this.appwriteService.updateTodo(this.id()!, todoData);
+          await this.toastService.showToast(
+            'Todo updated successfully!',
+            'success'
+          );
+        } else {
+          await this.appwriteService.createTodo(todoData);
+          await this.toastService.showToast(
+            'Todo created successfully!',
+            'success'
+          );
+        }
 
-      if (formData.dueDate) {
-        formData.dueDate = new Date(formData.dueDate).toISOString();
-      } else {
-        formData.dueDate = null;
+        await this.router.navigate(['/todos']);
+      } finally {
+        this.isLoading.set(false);
       }
-
-      if (this.isEditing() && this.id()) {
-        await this.appwriteService.updateTodo(this.id()!, formData);
-        await this.toastService.showToast(
-          'Todo updated successfully!',
-          'success'
-        );
-      } else {
-        await this.appwriteService.createTodo(formData);
-        await this.toastService.showToast(
-          'Todo created successfully!',
-          'success'
-        );
-      }
-
-      await this.router.navigate(['/todos']);
-      this.isLoading.set(false);
-    }
+    });
   }
 
   getCurrentDate(): string {

@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+  FormField,
+  FormRoot,
+  email,
+  form,
+  required,
+  submit
+} from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import {
   AlertController,
@@ -29,6 +31,12 @@ import { UpdateProfileRequest, User } from '../models/user.model';
 import { ToastService } from '../services/toast.service';
 import { FormErrorService } from '../services/form-error.service';
 
+interface ProfileFormModel {
+  email: string;
+  name: string;
+  password: string;
+}
+
 @Component({
   selector: 'app-profile',
   templateUrl: './profile.page.html',
@@ -48,42 +56,35 @@ import { FormErrorService } from '../services/form-error.service';
     IonText,
     IonButtons,
     IonBackButton,
-    ReactiveFormsModule,
-    IonItem
+    IonItem,
+    FormRoot,
+    FormField
   ]
 })
 export class ProfilePage implements OnInit {
   formErrorService = inject(FormErrorService);
-  profileForm: FormGroup;
+  profileModel = signal<ProfileFormModel>({
+    email: '',
+    name: '',
+    password: ''
+  });
+  originalEmail = signal('');
+  profileForm = form(this.profileModel, path => {
+    required(path.email);
+    email(path.email);
+    required(path.password, {
+      when: ({ valueOf }) => valueOf(path.email) !== this.originalEmail()
+    });
+  });
   isLoading = signal(false);
   currentUser = signal<User | null>(null);
-  showPasswordField = signal(false);
-  private originalEmail = '';
-  private readonly fb = inject(FormBuilder);
+  showPasswordField = computed(
+    () => this.profileModel().email !== this.originalEmail()
+  );
   private readonly appwriteService = inject(AppwriteService);
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastService);
   private readonly alertController = inject(AlertController);
-
-  constructor() {
-    this.profileForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      name: [''],
-      password: ['']
-    });
-  }
-
-  get email() {
-    return this.profileForm.get('email');
-  }
-
-  get name() {
-    return this.profileForm.get('name');
-  }
-
-  get password() {
-    return this.profileForm.get('password');
-  }
 
   ngOnInit() {
     this.loadProfile();
@@ -91,42 +92,33 @@ export class ProfilePage implements OnInit {
 
   async loadProfile() {
     this.isLoading.set(true);
-    const user = this.appwriteService.currentUser();
-    if (user) {
-      this.currentUser.set(user);
-      this.originalEmail = user.email;
-      this.profileForm.patchValue({
-        email: user.email,
-        name: user.name || ''
-      });
+    try {
+      const user = this.appwriteService.currentUser();
+      if (user) {
+        this.currentUser.set(user);
+        this.originalEmail.set(user.email);
+        this.profileModel.set({
+          email: user.email,
+          name: user.name || '',
+          password: ''
+        });
+      }
+    } finally {
+      this.isLoading.set(false);
     }
-    this.isLoading.set(false);
-  }
-
-  onEmailChange() {
-    const currentEmail = this.email?.value;
-    const emailChanged = currentEmail !== this.originalEmail;
-    this.showPasswordField.set(emailChanged);
-
-    const passwordControl = this.password;
-    if (emailChanged) {
-      passwordControl?.setValidators([Validators.required]);
-    } else {
-      passwordControl?.clearValidators();
-      passwordControl?.setValue('');
-    }
-    passwordControl?.updateValueAndValidity();
   }
 
   async onSubmit() {
-    if (this.profileForm.valid && !this.isLoading()) {
+    await submit(this.profileForm, async () => {
       const user = this.currentUser();
-      if (!user) return;
+      if (!user || this.isLoading()) {
+        return;
+      }
 
       this.isLoading.set(true);
 
       try {
-        const formData = this.profileForm.value;
+        const formData = this.profileModel();
         const updateData: UpdateProfileRequest = {
           name: formData.name
         };
@@ -139,24 +131,22 @@ export class ProfilePage implements OnInit {
         const updatedUser =
           await this.appwriteService.updateProfile(updateData);
         this.currentUser.set(updatedUser);
-
-        this.originalEmail = updatedUser.email;
-        this.showPasswordField.set(false);
-        this.password?.setValue('');
+        this.originalEmail.set(updatedUser.email);
+        this.profileModel.update(value => ({ ...value, password: '' }));
 
         await this.toastService.showToast(
           'Profile updated successfully!',
           'success'
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         await this.toastService.showToast(
-          error.message || 'Failed to update profile',
+          error instanceof Error ? error.message : 'Failed to update profile',
           'danger'
         );
+      } finally {
+        this.isLoading.set(false);
       }
-
-      this.isLoading.set(false);
-    }
+    });
   }
 
   async requestPasswordReset() {
