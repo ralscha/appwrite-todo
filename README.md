@@ -2,14 +2,13 @@
 
 An Angular/Ionic todo app that uses Appwrite Cloud for email/password authentication, password recovery, and per-user todo storage with Appwrite TablesDB.
 
-Demo: [https://appwrite-todo.appwrite.network/](https://appwrite-todo.appwrite.network/)
-
 ## Tech Stack
 
 - Angular 22 standalone application
+- Angular Signal Forms
 - Ionic Angular 8
 - Appwrite Web SDK 26 with `TablesDB`
-- TypeScript strict mode and Angular ESLint
+- TypeScript and Angular ESLint
 
 ## Appwrite Setup
 
@@ -19,13 +18,6 @@ Demo: [https://appwrite-todo.appwrite.network/](https://appwrite-todo.appwrite.n
 2. Create a new project.
 3. Note the project endpoint and project ID.
 
-The checked-in environment files currently point to:
-
-```ts
-appwriteEndpoint: 'https://fra.cloud.appwrite.io/v1';
-appwriteProjectId: '68b2b9730029ec3ac337';
-appwriteProjectName: 'todo';
-```
 
 Update `src/environments/environment.ts` and `src/environments/environment.prod.ts` if you use a different Appwrite project.
 

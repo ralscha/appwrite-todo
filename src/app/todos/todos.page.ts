@@ -84,9 +84,12 @@ export class TodosPage implements ViewWillEnter {
 
   async loadTodos() {
     this.isLoading.set(true);
-    const todos = await this.appwriteService.getTodos(this.hideCompleted());
-    this.todos.set(todos);
-    this.isLoading.set(false);
+    try {
+      const todos = await this.appwriteService.getTodos(this.hideCompleted());
+      this.todos.set(todos);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   async toggleHideCompleted() {
@@ -170,8 +173,11 @@ export class TodosPage implements ViewWillEnter {
   }
 
   async doRefresh(event: RefresherCustomEvent) {
-    await this.loadTodos();
-    event.target.complete();
+    try {
+      await this.loadTodos();
+    } finally {
+      event.target.complete();
+    }
   }
 
   formatDate(dateString: string): string {
