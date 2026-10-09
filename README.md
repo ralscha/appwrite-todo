@@ -6,8 +6,8 @@ An Angular/Ionic todo app that uses Appwrite Cloud for email/password authentica
 
 - Angular 22 standalone application
 - Angular Signal Forms
-- Ionic Angular 8
-- Appwrite Web SDK 26 with `TablesDB`
+- Ionic Angular 9
+- Appwrite Web SDK 28 with `TablesDB`
 - TypeScript and Angular ESLint
 
 ## Appwrite Setup

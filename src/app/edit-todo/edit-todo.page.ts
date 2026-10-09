@@ -24,7 +24,7 @@ import {
   IonTextarea,
   IonTitle,
   IonToolbar
-} from '@ionic/angular/standalone';
+} from '@ionic/angular';
 import { AppwriteService } from '../services/appwrite.service';
 import { Todo } from '../models/todo.model';
 import { ToastService } from '../services/toast.service';

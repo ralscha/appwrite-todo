@@ -23,7 +23,7 @@ import {
   IonTitle,
   IonToolbar,
   ViewWillEnter
-} from '@ionic/angular/standalone';
+} from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
   add,

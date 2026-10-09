@@ -25,7 +25,7 @@ import {
   IonText,
   IonTitle,
   IonToolbar
-} from '@ionic/angular/standalone';
+} from '@ionic/angular';
 import { AppwriteService } from '../services/appwrite.service';
 import { UpdateProfileRequest, User } from '../models/user.model';
 import { ToastService } from '../services/toast.service';

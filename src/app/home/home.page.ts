@@ -15,7 +15,7 @@ import {
   IonText,
   IonTitle,
   IonToolbar
-} from '@ionic/angular/standalone';
+} from '@ionic/angular';
 import { AppwriteService } from '../services/appwrite.service';
 
 @Component({
