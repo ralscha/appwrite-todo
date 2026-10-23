@@ -178,19 +178,29 @@ export class AppwriteService {
 
   async getTodos(hideCompleted: boolean): Promise<Todo[]> {
     try {
-      const queries = [Query.orderDesc('$createdAt')];
+      const pageSize = 100;
+      const queries = [Query.orderDesc('$createdAt'), Query.limit(pageSize)];
 
       if (hideCompleted) {
         queries.push(Query.equal('completed', false));
       }
 
-      const response = await this.tablesDB.listRows<TodoRow>({
-        databaseId: this.DATABASE_ID,
-        tableId: this.TODOS_TABLE_ID,
-        queries: queries
-      });
+      const todos: Todo[] = [];
+      let cursor: string | undefined;
 
-      return response.rows.map(row => this.mapRowToTodo(row));
+      while (true) {
+        const response = await this.tablesDB.listRows<TodoRow>({
+          databaseId: this.DATABASE_ID,
+          tableId: this.TODOS_TABLE_ID,
+          queries: cursor ? [...queries, Query.cursorAfter(cursor)] : queries
+        });
+
+        todos.push(...response.rows.map(row => this.mapRowToTodo(row)));
+        if (response.rows.length < pageSize) {
+          return todos;
+        }
+        cursor = response.rows[response.rows.length - 1].$id;
+      }
     } catch (error) {
       throw this.handleError(error);
     }
